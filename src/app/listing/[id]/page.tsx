@@ -58,6 +58,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
 // Add MessageBox component below
 function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail: string }) {
   const [message, setMessage] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -72,6 +73,7 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
         listing_id: listingId,
         message: message,
         seller_email: sellerEmail,
+        sender_email: senderEmail, // Save sender's email
         sent_at: new Date().toISOString(),
       },
     ]);
@@ -82,7 +84,7 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
       body: JSON.stringify({
         to: sellerEmail,
         subject: "You have a new message on Marketplace",
-        text: `You received a new message about your listing:\n\n${message}`,
+        text: `You received a new message about your listing from ${senderEmail || 'an interested buyer'}:\n\n${message}`,
       }),
     });
     setSending(false);
@@ -91,11 +93,23 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
     } else {
       setSent(true);
       setMessage("");
+      setSenderEmail("");
     }
   }
 
   return (
     <div className="mt-6 p-4 bg-zinc-50 rounded-xl border flex flex-col gap-2">
+      <label htmlFor="senderEmail" className="font-semibold text-zinc-800 text-base mb-1">Your Email</label>
+      <input
+        id="senderEmail"
+        type="email"
+        className="w-full border rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+        placeholder="your@email.com"
+        value={senderEmail}
+        onChange={e => setSenderEmail(e.target.value)}
+        disabled={sending}
+        required
+      />
       <label htmlFor="message" className="font-semibold text-zinc-800 text-base mb-1">Message Seller</label>
       <textarea
         id="message"
@@ -108,7 +122,7 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
       <button
         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 mt-2"
         onClick={handleSend}
-        disabled={sending || !message.trim()}
+        disabled={sending || !message.trim() || !senderEmail.trim()}
       >
         {sending ? "Sending..." : "Send Message"}
       </button>

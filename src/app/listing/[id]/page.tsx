@@ -1,21 +1,35 @@
 "use client";
 
 // Listing detail page for /listing/[id]
-import { supabase } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
-import { use, useState, useEffect } from 'react';
+import { supabase } from "@/lib/supabaseClient";
+import Image from "next/image"; // ✅ Use next/image
+import { use, useState, useEffect } from "react";
 
-export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+interface Listing {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  seller_email: string;
+  location?: string;
+  image_url: string;
+}
+
+export default function ListingDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const unwrappedParams = use(params);
-  const [listing, setListing] = useState<any>(null);
-  const router = useRouter();
+  const [listing, setListing] = useState<Listing | null>(null);
 
   useEffect(() => {
     async function fetchListing() {
-      const { data, error } = await supabase
-        .from('listings')
-        .select('*')
-        .eq('id', unwrappedParams.id)
+      const { data } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("id", unwrappedParams.id)
         .single();
       setListing(data);
     }
@@ -28,26 +42,52 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen bg-[#f6f7f9] flex items-center justify-center py-10 px-2 md:px-0">
       <div className="max-w-5xl w-full bg-white rounded-2xl shadow-xl border flex flex-col md:flex-row overflow-hidden">
         <div className="flex-1 flex items-center justify-center bg-zinc-100 p-6 md:p-10">
-          <div className="w-full max-w-lg aspect-square flex items-center justify-center rounded-xl overflow-hidden border shadow-md">
-            <img
+          <div className="w-full max-w-lg aspect-square flex items-center justify-center rounded-xl overflow-hidden border shadow-md relative">
+            <Image
               src={listing.image_url}
               alt={listing.title}
-              className="object-contain w-full h-full"
+              fill
+              className="object-contain"
             />
           </div>
         </div>
         <div className="flex-1 flex flex-col gap-6 p-6 md:p-10">
           <div>
-            <h1 className="text-3xl font-extrabold mb-2 text-zinc-900 leading-tight">{listing.title}</h1>
-            <div className="text-2xl font-bold text-blue-700 mb-3">${listing.price}</div>
-            <div className="text-zinc-500 text-sm mb-2">Listed just now in <span className="font-medium text-zinc-700">{listing.location || "Palo Alto, CA"}</span></div>
-            <div className="text-zinc-500 text-sm mb-2">Category: <span className="font-medium text-zinc-700">{listing.category}</span></div>
-            <div className="font-semibold text-zinc-800 text-base mb-1 mt-4">Description</div>
-            <div className="text-zinc-700 text-base mb-4 whitespace-pre-line">{listing.description}</div>
-            <div className="font-semibold text-zinc-800 text-base mb-1">Seller Information</div>
-            <div className="text-zinc-700 text-base mb-4">{listing.seller_email}</div>
+            <h1 className="text-3xl font-extrabold mb-2 text-zinc-900 leading-tight">
+              {listing.title}
+            </h1>
+            <div className="text-2xl font-bold text-blue-700 mb-3">
+              ${listing.price}
+            </div>
+            <div className="text-zinc-500 text-sm mb-2">
+              Listed just now in{" "}
+              <span className="font-medium text-zinc-700">
+                {listing.location || "Palo Alto, CA"}
+              </span>
+            </div>
+            <div className="text-zinc-500 text-sm mb-2">
+              Category:{" "}
+              <span className="font-medium text-zinc-700">
+                {listing.category}
+              </span>
+            </div>
+            <div className="font-semibold text-zinc-800 text-base mb-1 mt-4">
+              Description
+            </div>
+            <div className="text-zinc-700 text-base mb-4 whitespace-pre-line">
+              {listing.description}
+            </div>
+            <div className="font-semibold text-zinc-800 text-base mb-1">
+              Seller Information
+            </div>
+            <div className="text-zinc-700 text-base mb-4">
+              {listing.seller_email}
+            </div>
             {/* Message Box */}
-            <MessageBox listingId={listing.id} sellerEmail={listing.seller_email} />
+            <MessageBox
+              listingId={listing.id}
+              sellerEmail={listing.seller_email}
+            />
           </div>
         </div>
       </div>
@@ -56,7 +96,13 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
 }
 
 // Add MessageBox component below
-function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail: string }) {
+function MessageBox({
+  listingId,
+  sellerEmail,
+}: {
+  listingId: string;
+  sellerEmail: string;
+}) {
   const [message, setMessage] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -68,12 +114,12 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
     setError("");
     setSent(false);
     // Insert message into Supabase
-    const { error } = await supabase.from("messages").insert([
+    const { error: insertError } = await supabase.from("messages").insert([
       {
         listing_id: listingId,
         message: message,
         seller_email: sellerEmail,
-        sender_email: senderEmail, // Save sender's email
+        sender_email: senderEmail,
         sent_at: new Date().toISOString(),
       },
     ]);
@@ -84,11 +130,13 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
       body: JSON.stringify({
         to: sellerEmail,
         subject: "You have a new message on Marketplace",
-        text: `You received a new message about your listing from ${senderEmail || 'an interested buyer'}:\n\n${message}`,
+        text: `You received a new message about your listing from ${
+          senderEmail || "an interested buyer"
+        }:\n\n${message}`,
       }),
     });
     setSending(false);
-    if (error) {
+    if (insertError) {
       setError("Failed to send message. Please try again.");
     } else {
       setSent(true);
@@ -99,24 +147,34 @@ function MessageBox({ listingId, sellerEmail }: { listingId: string; sellerEmail
 
   return (
     <div className="mt-6 p-4 bg-zinc-50 rounded-xl border flex flex-col gap-2">
-      <label htmlFor="senderEmail" className="font-semibold text-zinc-800 text-base mb-1">Your Email</label>
+      <label
+        htmlFor="senderEmail"
+        className="font-semibold text-zinc-800 text-base mb-1"
+      >
+        Your Email
+      </label>
       <input
         id="senderEmail"
         type="email"
         className="w-full border rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
         placeholder="your@email.com"
         value={senderEmail}
-        onChange={e => setSenderEmail(e.target.value)}
+        onChange={(e) => setSenderEmail(e.target.value)}
         disabled={sending}
         required
       />
-      <label htmlFor="message" className="font-semibold text-zinc-800 text-base mb-1">Message Seller</label>
+      <label
+        htmlFor="message"
+        className="font-semibold text-zinc-800 text-base mb-1"
+      >
+        Message Seller
+      </label>
       <textarea
         id="message"
         className="w-full border rounded-lg p-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
         placeholder="Hi, is this still available?"
         value={message}
-        onChange={e => setMessage(e.target.value)}
+        onChange={(e) => setMessage(e.target.value)}
         disabled={sending}
       />
       <button
